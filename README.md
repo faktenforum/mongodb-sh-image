@@ -26,19 +26,20 @@ mongodb-sh:
         MONGODB_PORT: ${MONGODB_PORT}
 
     entrypoint: >
-        /bin/sh -c "
-        echo 'Waiting for mongodb to be ready...' &&
-        sleep 5 &&
-        set -e
-        mongosh -u ${MONGODB_ROOT_USER} -p ${MONGODB_ROOT_USER} --authenticationDatabase admin mongodb://${MONGODB_HOST}:${MONGODB_PORT}<<EOF
-        use ${MONGODB_CUSTOM_DB}
-
+      /bin/sh -c "
+      echo 'Waiting for MongoDB to be ready...' &&
+      until mongosh --quiet -u ${MONGODB_CUSTOM_USER} -p ${MONGODB_ROOT_PASSWORD} --authenticationDatabase admin mongodb://mongodb:${MONGODB_PORT} --eval 'db.runCommand({ ping: 1 })'; do
+        sleep 1
+      done &&
+      echo 'MongoDB is ready. Creating user and setting up database...' &&
+      mongosh -u ${MONGODB_ROOT_USER} -p ${MONGODB_ROOT_PASSWORD} --authenticationDatabase admin mongodb://mongodb:${MONGODB_PORT} --eval '
+        db = db.getSiblingDB(\"${MONGODB_CUSTOM_DB}\");
         db.createUser({
-        user: '${MONGODB_CUSTOM_USER}',
-        pwd: '${MONGODB_CUSTOM_PASSWORD}',
-        roles: [{ role: 'readWrite', db: '${MONGODB_CUSTOM_DB}' },
-        { role: 'dbOwner', db: '${MONGODB_CUSTOM_DB}' }],
+          user: \"${MONGODB_CUSTOM_USER}\",
+          pwd: \"${MONGODB_CUSTOM_PASSWORD}\",
+          roles: [{ role: \"readWrite\", db: \"${MONGODB_CUSTOM_DB}\" },
+                  { role: \"dbOwner\", db: \"${MONGODB_CUSTOM_DB}\" }]
         });
-        EOF"**
+      '"
 
 ```
